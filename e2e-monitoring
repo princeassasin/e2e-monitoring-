@@ -1,0 +1,145 @@
+#!/bin/bash
+
+###
+# Copyright 2015, Comcast Corporation. This software and its contents are
+# Comcast confidential and proprietary. It cannot be used, disclosed, or
+# distributed without Comcast's prior written permission. Modification of this
+# software is only allowed at the direction of Comcast Corporation. All allowed
+# modifications must be provided to Comcast Corporation.
+###
+
+
+### BEGIN INIT INFO
+# Provides: e2e-monitoring
+# Short-Description: e2e-monitoring responsible for measuring time for kafka and Http-collector.
+# Description: e2e-monitoring is a to measure the time in milliseconds for the kafka send time, 
+#              Http-collector send time, consume time, kafka round trip time and overall round trip time .
+### END INIT INFO
+
+# Move these into the INIT INFO as needed.
+# Required-Start: $remote_fs $syslog
+# Required-Stop: $remote_fs $syslog
+
+. /etc/rc.d/init.d/functions
+
+collcmd=${COLLCMD-/opt/e2e-monitoring/start.sh}
+REGEX="e2e-monitoring.jar"
+PIDFILE="/var/run/e2e-monitoring.pid"
+LOCKFILE=${LOCKFILE-/var/lock/subsys/e2e-monitoring}
+SYSCFG="/etc/sysconfig/e2e-monitoring"
+
+RUNUSER=nobody
+RUNGROUP=nobody
+
+if [ -f $SYSCFG ]; then
+  . $SYSCFG
+fi
+
+pid=`pgrep -f "$REGEX"`
+
+### Functions
+
+start() {
+
+  setup_pidfile
+
+  if [ $UID -ne 0 ] ; then
+    echo "User has insufficient privilege."
+    exit 4
+  fi
+
+  if [ -n "$pid" ]; then
+   echo "HTTP Collector already running"
+   RETVAL=2
+  else
+
+   echo -n "Starting HTTP Collector "
+
+   daemon --user $RUNUSER $collcmd
+
+   RETVAL=$?
+   echo
+   [ $RETVAL = 0 ] && touch ${LOCKFILE}
+   return $RETVAL
+
+  fi
+
+}
+
+status() {
+
+  refresh_pidfile
+
+   if [ -n "$pid" ]; then
+      echo "HTTP Collector is running as pid $pid"
+      RETVAL=0
+   else
+       echo "HTTP Collector instance is stopped"
+       RETVAL=1
+   fi
+   return $RETVAL
+}
+
+stop() {
+  if [ $UID -ne 0 ] ; then
+    echo "User has insufficient privilege."
+    exit 4
+  fi
+
+  refresh_pidfile
+
+  if [ -n "$pid" ]; then
+    echo -n "Stopping HTTP Collector"
+    killproc -p $PIDFILE -d 10 java
+    RETVAL=$?
+    echo
+    [ $RETVAL = 0 ] && rm -f ${lockfile} ${PIDFILE}
+  else
+    echo "HTTP Collector is not running."
+    exit 1
+  fi
+
+ return $RETVAL
+
+}
+
+restart() {
+  stop
+  start
+}
+
+reload() {
+  restart
+}
+
+force-reload() {
+  restart
+}
+
+setpid() {
+  pid=`pgrep -f "$REGEX"`
+}
+
+setup_pidfile() {
+  setpid
+  touch $PIDFILE
+  chown $RUNUSER:$RUNGROUP $PIDFILE
+}
+
+refresh_pidfile() {
+  setpid
+  echo -n $pid > $PIDFILE
+  setup_pidfile
+}
+
+### Input Switch
+
+case "$1" in
+  start | stop | status | restart | reload | force-reload)
+    $1
+    ;;
+  *)
+    echo $"Usage: $0 {start|stop|status|restart|reload|force-reload}"
+    exit 2
+esac
+exit $?

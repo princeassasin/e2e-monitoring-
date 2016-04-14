@@ -1,0 +1,21 @@
+#!/bin/sh
+
+#This file contains variables that will override the behavior of the e2e-monitroing.
+#Do not uncomment or change this file unless you know what you are doing!
+
+collcmd=${COLLCMD-/opt/e2e-monitoring/start.sh}
+REGEX=e2e-monitoring.jar
+PIDFILE=/var/run/e2e-monitoring.pid
+LOCKFILE=${LOCKFILE-/var/lock/subsys/e2e-monitoring}
+RUNUSER=nobody
+RUNGROUP=nobody
+JARFILE=/opt/e2e-monitoring/e2e-monitoring.jar
+CONFDIR=/etc/e2e-monitoring/
+CONFFILE=e2emonitoring.config
+CONFLOG=log4j2.xml
+JMXREMOTE=true
+JMXPORT=7711
+JMXAUTH=false
+JMXSSL=false
+JAVAARGS=""
+MAXMEM=7G
